@@ -1,0 +1,834 @@
+{
+  "info": {
+    "_postman_id": "c1f7b889-4d32-4e92-97b5-779919f2a4de",
+    "name": "Tugas UKL 2 - Authentication & User API",
+    "description": "Koleksi lengkap Postman untuk pengujian API Autentikasi dan Manajemen Pengguna Tugas UKL 2.\nMendukung registrasi, login multi-identitas, verifikasi OTP WhatsApp, reset kata sandi, dan autentikasi token Sanctum.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000/api",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Autentikasi (Register & Login)",
+      "description": "Folder berisi endpoint pendaftaran akun baru, login via email/username, dan pengambilan profil pengguna terotentikasi.",
+      "item": [
+        {
+          "name": "Register - Email & WhatsApp",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.success && jsonData.data && jsonData.data.token) {",
+                  "    pm.environment.set(\"token\", jsonData.data.token);",
+                  "    console.log(\"Sanctum token disimpan otomatis ke environment:\", jsonData.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Budi Santoso\",\n  \"email\": \"{{test_email}}\",\n  \"phone_number\": \"{{test_phone}}\",\n  \"password\": \"{{test_password}}\",\n  \"password_confirmation\": \"{{test_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Pendaftaran akun baru dengan menyertakan nama, email, nomor WhatsApp, serta konfirmasi kata sandi. Mengembalikan token Bearer Sanctum."
+          }
+        },
+        {
+          "name": "Register - Hanya Email",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.success && jsonData.data && jsonData.data.token) {",
+                  "    pm.environment.set(\"token\", jsonData.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Siti Rahma\",\n  \"email\": \"siti.rahma@example.com\",\n  \"password\": \"{{test_password}}\",\n  \"password_confirmation\": \"{{test_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Pendaftaran akun jika user hanya memiliki alamat email (aturan: required_without:phone_number)."
+          }
+        },
+        {
+          "name": "Register - Hanya Nomor WhatsApp",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.success && jsonData.data && jsonData.data.token) {",
+                  "    pm.environment.set(\"token\", jsonData.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Rian Pratama\",\n  \"phone_number\": \"089876543210\",\n  \"password\": \"{{test_password}}\",\n  \"password_confirmation\": \"{{test_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Pendaftaran akun jika user hanya memiliki nomor WhatsApp (aturan: required_without:email)."
+          }
+        },
+        {
+          "name": "Login - Menggunakan Email",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.success && jsonData.data && jsonData.data.token) {",
+                  "    pm.environment.set(\"token\", jsonData.data.token);",
+                  "    console.log(\"Token login tersimpan di environment:\", jsonData.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identity\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login-email",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login-email"
+              ]
+            },
+            "description": "Login menggunakan kredensial Email dan kata sandi. Menghasilkan token Sanctum yang otomatis disimpan ke variabel 'token'."
+          }
+        },
+        {
+          "name": "Login - Menggunakan Username",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.success && jsonData.data && jsonData.data.token) {",
+                  "    pm.environment.set(\"token\", jsonData.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identity\": \"budi_santoso\",\n  \"password\": \"{{test_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login-email",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login-email"
+              ]
+            },
+            "description": "Login menggunakan username (controller mendeteksi apakah identity berupa email atau username)."
+          }
+        },
+        {
+          "name": "Get User Profile (Protected)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Data user terdefinisi\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.id).to.not.be.undefined;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/user",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "user"
+              ]
+            },
+            "description": "Mengambil informasi profil user yang sedang aktif. Memerlukan Authorization: Bearer {{token}}."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Login via OTP WhatsApp",
+      "description": "Folder alur autentikasi tanpa kata sandi (*passwordless login*) melalui kode OTP nomor WhatsApp.",
+      "item": [
+        {
+          "name": "1. Request OTP WhatsApp",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Response success is true\", function () {",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone_number\": \"{{test_phone}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/request-otp-wa",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "request-otp-wa"
+              ]
+            },
+            "description": "Mengirimkan permintaan pembuatan kode OTP WhatsApp 6-digit. Berlaku selama 5 menit."
+          }
+        },
+        {
+          "name": "2. Verify OTP WhatsApp",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.success && jsonData.data && jsonData.data.token) {",
+                  "    pm.environment.set(\"token\", jsonData.data.token);",
+                  "    console.log(\"Token dari verifikasi OTP WhatsApp disimpan:\", jsonData.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone_number\": \"{{test_phone}}\",\n  \"otp_code\": \"{{otp_code}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/verify-otp-wa",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "verify-otp-wa"
+              ]
+            },
+            "description": "Memvalidasi kode OTP yang dikirim ke WhatsApp. Jika benar, mengembalikan token autentikasi Sanctum dan menghapus OTP dari database."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Pemulihan Kata Sandi (Forgot Password)",
+      "description": "Folder untuk permintaan reset kata sandi melalui Email atau WhatsApp dan eksekusi perubahan password baru.",
+      "item": [
+        {
+          "name": "1. Request Reset Password via WhatsApp",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.expect(jsonData.success).to.be.true;"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"whatsapp\",\n  \"identifier\": \"{{test_phone}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/forgot-password/request",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "forgot-password",
+                "request"
+              ]
+            },
+            "description": "Mengajukan reset kata sandi dengan metode WhatsApp. Menghasilkan kode OTP 6-digit berdurasi 10 menit."
+          }
+        },
+        {
+          "name": "2. Request Reset Password via Email",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.expect(jsonData.success).to.be.true;"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"email\",\n  \"identifier\": \"{{test_email}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/forgot-password/request",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "forgot-password",
+                "request"
+              ]
+            },
+            "description": "Mengajukan reset kata sandi dengan metode Email."
+          }
+        },
+        {
+          "name": "3. Reset Password (Submit OTP & Password Baru)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.expect(jsonData.success).to.be.true;"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"{{test_phone}}\",\n  \"otp_code\": \"{{otp_code}}\",\n  \"password\": \"PasswordBaru456!\",\n  \"password_confirmation\": \"PasswordBaru456!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/forgot-password/reset",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "forgot-password",
+                "reset"
+              ]
+            },
+            "description": "Memvalidasi OTP forgot_password dan mengubah kata sandi pengguna dengan password baru."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Kasus Uji Validasi & Negatif (Negative Testing)",
+      "description": "Folder untuk menguji skenario gagal, validasi form, kredensial tidak valid, dan proteksi brute-force.",
+      "item": [
+        {
+          "name": "Register Gagal - Body Kosong (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 422\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Ekspektasi 422: Validasi gagal karena parameter wajib tidak diisi."
+          }
+        },
+        {
+          "name": "Register Gagal - Password Mismatch (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 422\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Pesan password mismatch muncul\", function () {",
+                  "    pm.expect(jsonData.errors.password[0]).to.include(\"Konfirmasi kata sandi tidak cocok\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Testing User\",\n  \"email\": \"test_mismatch@example.com\",\n  \"password\": \"Password123!\",\n  \"password_confirmation\": \"PasswordBeda999!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Ekspektasi 422: Password dan Password Confirmation tidak cocok."
+          }
+        },
+        {
+          "name": "Login Gagal - Password Salah (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identity\": \"{{test_email}}\",\n  \"password\": \"PasswordSalahTotal999\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login-email",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login-email"
+              ]
+            },
+            "description": "Ekspektasi 401: Kombinasi email/username dan password tidak cocok."
+          }
+        },
+        {
+          "name": "Request OTP Gagal - Nomor Tidak Terdaftar (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone_number\": \"080000000000\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/request-otp-wa",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "request-otp-wa"
+              ]
+            },
+            "description": "Ekspektasi 404: Nomor telepon tidak ditemukan di basis data pengguna."
+          }
+        },
+        {
+          "name": "Verify OTP Gagal - OTP Salah (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone_number\": \"{{test_phone}}\",\n  \"otp_code\": \"000000\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/verify-otp-wa",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "verify-otp-wa"
+              ]
+            },
+            "description": "Ekspektasi 400: Kode OTP tidak sesuai dan nilai attempts bertambah."
+          }
+        },
+        {
+          "name": "Get User Profile Gagal - Tanpa Token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/user",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "user"
+              ]
+            },
+            "description": "Ekspektasi 401: Akses ditolak karena tidak menyertakan Authorization Bearer Token."
+          }
+        }
+      ]
+    }
+  ]
+}

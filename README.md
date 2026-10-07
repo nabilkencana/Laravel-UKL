@@ -14,6 +14,7 @@ Aplikasi backend API berbasis **Laravel 12** dan **PHP 8.4** yang menyediakan si
   - [1. Alur Registrasi & Login (Email/Username)](#1-alur-registrasi--login-emailusername)
   - [2. Alur Autentikasi OTP WhatsApp](#2-alur-autentikasi-otp-whatsapp)
 - [Dokumentasi API Endpoint](#-dokumentasi-api-endpoint)
+- [Koleksi Postman (Postman Collection)](#-koleksi-postman-postman-collection)
 - [Panduan Instalasi & Menjalankan Proyek](#-panduan-instalasi--menjalankan-proyek)
 - [Pengujian (Testing)](#-pengujian-testing)
 
@@ -240,7 +241,7 @@ sequenceDiagram
     %% Skenario Registrasi
     rect rgb(240, 248, 255)
     note over Client, DB: Alur Registrasi Akun Baru
-    Client->>API: POST /api/register (name, email, phone_number, password, password_confirmation)
+    Client->>API: POST /api/auth/register (name, email, phone_number, password, password_confirmation)
     API->>Validator: Validasi format & keunikan (email, phone_number)
     alt Validasi Gagal
         Validator-->>API: Error validasi
@@ -258,7 +259,7 @@ sequenceDiagram
     %% Skenario Login
     rect rgb(245, 255, 245)
     note over Client, DB: Alur Login (Multi-Identifier: Email / Username)
-    Client->>API: POST /api/login (identity, password)
+    Client->>API: POST /api/auth/login-email (identity, password)
     API->>API: Deteksi tipe identity (Filter Email vs Username)
     API->>DB: Cari user WHERE email = identity OR username = identity
     alt User Tidak Ditemukan atau Password Tidak Cocok
@@ -287,14 +288,14 @@ sequenceDiagram
     participant User_DB as Tabel USERS
 
     %% Permintaan OTP
-    Client->>App: POST /api/otp/request (identifier: "08123456789", type: "login_whatsapp")
+    Client->>App: POST /api/auth/request-otp-wa (phone_number: "08123456789")
     App->>App: Generate kode acak 6-digit & waktu berlaku (+5 menit)
     App->>OTP_DB: Simpan identifier, otp_code, type, expires_at
     App->>WA: Kirim pesan berisi kode OTP ke nomor WhatsApp
     WA-->>Client: Pesan WhatsApp diterima pengguna
 
     %% Verifikasi OTP
-    Client->>App: POST /api/otp/verify (identifier, otp_code)
+    Client->>App: POST /api/auth/verify-otp-wa (phone_number, otp_code)
     App->>OTP_DB: SELECT * WHERE identifier = target ORDER BY id DESC LIMIT 1
     alt Waktu Sekarang > expires_at (Kedaluwarsa)
         App-->>Client: 400 Bad Request (Kode OTP telah kedaluwarsa)
@@ -313,10 +314,10 @@ sequenceDiagram
 
 ## 📡 Dokumentasi API Endpoint
 
-Berikut adalah ringkasan endpoint yang tersedia di sistem:
+Seluruh endpoint autentikasi dikelompokkan dalam prefix `/api/auth`, serta endpoint profil `/api/user`:
 
 ### 1. Registrasi Akun Pengguna
-- **URL**: `/api/register`
+- **URL**: `/api/auth/register`
 - **Method**: `POST`
 - **Headers**: `Accept: application/json`, `Content-Type: application/json`
 - **Payload Request**:
@@ -329,6 +330,7 @@ Berikut adalah ringkasan endpoint yang tersedia di sistem:
     "password_confirmation": "Password123!"
   }
   ```
+  *(Keterangan: `email` dan `phone_number` bersifat fleksibel, salah satunya wajib diisi).*
 - **Contoh Respons Sukses (201 Created)**:
   ```json
   {
@@ -349,7 +351,7 @@ Berikut adalah ringkasan endpoint yang tersedia di sistem:
   ```
 
 ### 2. Login (Email atau Username)
-- **URL**: `/api/login` (atau `loginEmail`)
+- **URL**: `/api/auth/login-email`
 - **Method**: `POST`
 - **Headers**: `Accept: application/json`, `Content-Type: application/json`
 - **Payload Request**:
@@ -359,7 +361,7 @@ Berikut adalah ringkasan endpoint yang tersedia di sistem:
     "password": "Password123!"
   }
   ```
-  *(Catatan: Kolom `identity` dapat diisi email maupun username).*
+  *(Keterangan: Kolom `identity` dapat diisi alamat email maupun username pengguna).*
 - **Contoh Respons Sukses (200 OK)**:
   ```json
   {
@@ -377,7 +379,85 @@ Berikut adalah ringkasan endpoint yang tersedia di sistem:
   }
   ```
 
-### 3. Profil Pengguna Terautentikasi
+### 3. Permintaan OTP WhatsApp
+- **URL**: `/api/auth/request-otp-wa`
+- **Method**: `POST`
+- **Payload Request**:
+  ```json
+  {
+    "phone_number": "081234567890"
+  }
+  ```
+- **Contoh Respons Sukses (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Kode OTP berhasil dikirimkan via WhatsApp."
+  }
+  ```
+
+### 4. Verifikasi OTP WhatsApp
+- **URL**: `/api/auth/verify-otp-wa`
+- **Method**: `POST`
+- **Payload Request**:
+  ```json
+  {
+    "phone_number": "081234567890",
+    "otp_code": "123456"
+  }
+  ```
+- **Contoh Respons Sukses (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Verifikasi berhasil",
+    "data": {
+      "user": { "id": 1, "name": "Budi Santoso", "phone_number": "081234567890" },
+      "token": "3|mNpQrStUv54321..."
+    }
+  }
+  ```
+
+### 5. Permintaan Lupa Kata Sandi (Forgot Password)
+- **URL**: `/api/auth/forgot-password/request`
+- **Method**: `POST`
+- **Payload Request**:
+  ```json
+  {
+    "method": "whatsapp",
+    "identifier": "081234567890"
+  }
+  ```
+  *(Keterangan: `method` dapat bernilai `"whatsapp"` atau `"email"`).*
+- **Contoh Respons Sukses (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Instruksi reset kata sandi telah dikirimkan."
+  }
+  ```
+
+### 6. Reset Kata Sandi Baru
+- **URL**: `/api/auth/forgot-password/reset`
+- **Method**: `POST`
+- **Payload Request**:
+  ```json
+  {
+    "identifier": "081234567890",
+    "otp_code": "123456",
+    "password": "PasswordBaru123!",
+    "password_confirmation": "PasswordBaru123!"
+  }
+  ```
+- **Contoh Respons Sukses (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Kata sandi berhasil diperbarui. Silakan masuk kembali."
+  }
+  ```
+
+### 7. Profil Pengguna Terautentikasi
 - **URL**: `/api/user`
 - **Method**: `GET`
 - **Headers**: `Accept: application/json`, `Authorization: Bearer <token>`
@@ -392,6 +472,17 @@ Berikut adalah ringkasan endpoint yang tersedia di sistem:
   }
   ```
 
+---
+
+## 📮 Koleksi Postman (Postman Collection)
+
+Koleksi Postman lengkap beserta environment lokal telah disediakan di dalam folder terpisah [`postman/`](./postman):
+
+- 📄 **Collection File**: [`postman/tugas-ukl2.postman_collection.json`](./postman/tugas-ukl2.postman_collection.json)
+- 🌍 **Environment File**: [`postman/tugas-ukl2.postman_environment.json`](./postman/tugas-ukl2.postman_environment.json)
+- 📖 **Panduan Penggunaan**: [`postman/README.md`](./postman/README.md)
+
+Koleksi telah dilengkapi dengan *test script* otomatis yang menyimpan token Sanctum ke variabel `{{token}}` setelah proses register, login, atau verifikasi OTP WhatsApp berhasil.
 ---
 
 ## 💻 Panduan Instalasi & Menjalankan Proyek

@@ -15,19 +15,21 @@ class AuthController extends Controller
     {
         $validated = $request->validate([
             'name'         => 'required|string|max:255',
-            'email'        => 'required|email|unique:users',
-            'phone_number' => 'required|unique:users',
+            'email'        => 'nullable|email|unique:users|required_without:phone_number',
+            'phone_number' => 'nullable|string|unique:users|required_without:email',
             'password'     => 'required|string|min:8|confirmed',
         ], [
-            'email.unique'        => 'Email ini sudah terdaftar.',
-            'phone_number.unique' => 'Nomor WhatsApp ini sudah terdaftar.',
-            'password.confirmed'  => 'Konfirmasi kata sandi tidak cocok.',
+            'email.required_without'        => 'Alamat email atau nomor WhatsApp harus diisi salah satu.',
+            'phone_number.required_without' => 'Alamat email atau nomor WhatsApp harus diisi salah satu.',
+            'email.unique'                  => 'Email ini sudah terdaftar.',
+            'phone_number.unique'           => 'Nomor WhatsApp ini sudah terdaftar.',
+            'password.confirmed'            => 'Konfirmasi kata sandi tidak cocok.',
         ]);
 
         $user = User::create([
             'name'         => $validated['name'],
-            'email'        => $validated['email'],
-            'phone_number' => $validated['phone_number'],
+            'email'        => $validated['email'] ?? null,
+            'phone_number' => $validated['phone_number'] ?? null,
             'password'     => Hash::make($validated['password']),
         ]);
 
