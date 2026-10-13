@@ -234,23 +234,22 @@ Tabel session driver terpusat untuk menyimpan status sesi login web secara aman 
 
 ## 🔄 Diagram Alur Sistem (Sequence Diagram)
 
-### 1. Alur Registrasi & Login (Email/Username)
+### 1. Alur Registrasi dan Login (Email/Username)
 
 Pengguna dapat mendaftar dengan akun baru, serta melakukan login menggunakan **Email** ataupun **Username** secara dinamis:
-
 ```mermaid
 sequenceDiagram
     autonumber
     actor Client as Pengguna / Frontend
     participant API as AuthController (Laravel)
     participant Validator as Input Validator
-    participant DB as Basis Data (Users & Tokens)
+    participant DB as Basis Data (Users dan Tokens)
 
     %% Skenario Registrasi
     rect rgb(240, 248, 255)
     note over Client, DB: Alur Registrasi Akun Baru
     Client->>API: POST /api/auth/register (name, email, phone_number, password, password_confirmation)
-    API->>Validator: Validasi format & keunikan (email, phone_number)
+    API->>Validator: Validasi format dan keunikan (email, phone_number)
     alt Validasi Gagal
         Validator-->>API: Error validasi
         API-->>Client: 422 Unprocessable Content {success: false, errors}
@@ -292,12 +291,12 @@ sequenceDiagram
     actor Client as Pengguna / Frontend
     participant App as Backend API
     participant OTP_DB as Tabel OTPS
-    participant WA as WhatsApp Gateway Gateway
+    participant WA as WhatsApp Gateway
     participant User_DB as Tabel USERS
 
     %% Permintaan OTP
     Client->>App: POST /api/auth/request-otp-wa (phone_number: "08123456789")
-    App->>App: Generate kode acak 6-digit & waktu berlaku (+5 menit)
+    App->>App: Generate kode acak 6-digit dan waktu berlaku (+5 menit)
     App->>OTP_DB: Simpan identifier, otp_code, type, expires_at
     App->>WA: Kirim pesan berisi kode OTP ke nomor WhatsApp
     WA-->>Client: Pesan WhatsApp diterima pengguna
@@ -345,13 +344,13 @@ Endpoint untuk mendaftarkan akun pengguna baru menggunakan nama, password, serta
 
 ```mermaid
 flowchart TD
-    A([Mulai: Request Register]) --> B[Client kirim Nama, Email/No WA, Password]
-    B --> C{Validasi Input:<br/>Format & Keunikan Data?}
-    C -- Gagal --> D[Kembalikan 422 Unprocessable Content<br/>Pesan error validasi]
-    C -- Berhasil --> E[Hash Password dengan Bcrypt]
-    E --> F[Simpan Data User Baru ke Database]
-    F --> G[Generate API Token Sanctum]
-    G --> H([Selesai: Kembalikan 201 Created<br/>Data User & Bearer Token])
+    A(["Mulai - Request Register"]) --> B["Client kirim Nama, Kontak, dan Password"]
+    B --> C{"Validasi Input:<br/>Format dan Keunikan Data?"}
+    C -- Gagal --> D["Kembalikan 422 Unprocessable Content<br/>Pesan error validasi"]
+    C -- Berhasil --> E["Hash Password dengan Bcrypt"]
+    E --> F["Simpan Data User Baru ke Database"]
+    F --> G["Generate API Token Sanctum"]
+    G --> H(["Selesai - Kembalikan 201 Created<br/>Data User dan Bearer Token"])
 ```
 
 **💡 Cara Menjelaskan Alur Ini:**
@@ -367,17 +366,17 @@ Endpoint masuk sistem secara dinamis yang otomatis mendeteksi apakah pengguna me
 
 ```mermaid
 flowchart TD
-    A([Mulai: Request Login]) --> B[Client kirim Identity & Password]
-    B --> C{Validasi Input:<br/>Identity & Password terisi?}
-    C -- Gagal --> D[Kembalikan 422 Unprocessable Content]
-    C -- Berhasil --> E{Deteksi Tipe Identity:<br/>Format Email atau Username?}
-    E -- Format Email --> F1[Cari User WHERE email = identity]
-    E -- Format Username --> F2[Cari User WHERE username = identity]
-    F1 --> G{User Ada &<br/>Hash::check Password Cocok?}
+    A(["Mulai - Request Login"]) --> B["Client kirim Identity dan Password"]
+    B --> C{"Validasi Input:<br/>Identity dan Password terisi?"}
+    C -- Gagal --> D["Kembalikan 422 Unprocessable Content"]
+    C -- Berhasil --> E{"Deteksi Tipe Identity:<br/>Format Email atau Username?"}
+    E -- Format Email --> F1["Cari User berdasarkan Email"]
+    E -- Format Username --> F2["Cari User berdasarkan Username"]
+    F1 --> G{"User Ditemukan dan<br/>Hash Password Cocok?"}
     F2 --> G
-    G -- Tidak Cocok / User Null --> H[Kembalikan 401 Unauthorized<br/>Kombinasi salah]
-    G -- Cocok --> I[Buat Personal Access Token Sanctum]
-    I --> J([Selesai: Kembalikan 200 OK<br/>Data User & Bearer Token])
+    G -- Tidak Cocok --> H["Kembalikan 401 Unauthorized<br/>Kombinasi salah"]
+    G -- Cocok --> I["Buat Personal Access Token Sanctum"]
+    I --> J(["Selesai - Kembalikan 200 OK<br/>Data User dan Bearer Token"])
 ```
 
 **💡 Cara Menjelaskan Alur Ini:**
@@ -393,13 +392,13 @@ Endpoint untuk membuat dan mengirimkan 6 digit One-Time Password ke nomor WhatsA
 
 ```mermaid
 flowchart TD
-    A([Mulai: Request OTP]) --> B[Client kirim Nomor WhatsApp]
-    B --> C{Cek Nomor Terdaftar<br/>di Database Users?}
-    C -- Tidak Terdaftar --> D[Kembalikan 404 Not Found<br/>Nomor belum terdaftar]
-    C -- Terdaftar --> E[Generate 6 Digit Angka Acak OTP]
-    E --> F[Simpan Hash OTP ke Tabel 'otps'<br/>Set Expired: 5 Menit, Attempts: 0]
-    F --> G[Kirim Kode via WhatsApp Gateway]
-    G --> H([Selesai: Kembalikan 200 OK<br/>OTP Berhasil Dikirimkan])
+    A(["Mulai - Request OTP"]) --> B["Client kirim Nomor WhatsApp"]
+    B --> C{"Cek Nomor Terdaftar<br/>di Database Users?"}
+    C -- Tidak Terdaftar --> D["Kembalikan 404 Not Found<br/>Nomor belum terdaftar"]
+    C -- Terdaftar --> E["Generate 6 Digit Angka Acak OTP"]
+    E --> F["Simpan Hash OTP ke Tabel otps<br/>Expired: 5 Menit, Attempts: 0"]
+    F --> G["Kirim Kode via WhatsApp Gateway"]
+    G --> H(["Selesai - Kembalikan 200 OK<br/>OTP Berhasil Dikirimkan"])
 ```
 
 **💡 Cara Menjelaskan Alur Ini:**
@@ -415,17 +414,17 @@ Endpoint verifikasi kode OTP WhatsApp untuk login tanpa password (*passwordless 
 
 ```mermaid
 flowchart TD
-    A([Mulai: Verifikasi OTP]) --> B[Client kirim No WhatsApp & 6 Digit OTP]
-    B --> C{Cek Data OTP Aktif di Database?}
-    C -- Tidak Ada / Expired --> D[Kembalikan 400 Bad Request<br/>OTP salah atau kadaluarsa]
-    C -- Masih Berlaku --> E{Percobaan Gagal<br/>Sudah >= 3 Kali?}
-    E -- Ya --> F[Kembalikan 429 Too Many Requests<br/>Akses dibekukan sementara]
-    E -- Tidak --> G{Verifikasi Kode:<br/>Hash::check OTP Cocok?}
-    G -- Salah --> H[Tingkatkan Kolom attempts + 1]
-    H --> I[Kembalikan 400 Bad Request<br/>Pesan sisa percobaan]
-    G -- Benar --> J[Hapus Record OTP dari Database]
-    J --> K[Generate API Token Sanctum]
-    K --> L([Selesai: Kembalikan 200 OK<br/>Login Sukses & Bearer Token])
+    A(["Mulai - Verifikasi OTP"]) --> B["Client kirim No WhatsApp dan 6 Digit OTP"]
+    B --> C{"Cek Data OTP Aktif di Database?"}
+    C -- Tidak Ada atau Expired --> D["Kembalikan 400 Bad Request<br/>OTP salah atau kadaluarsa"]
+    C -- Masih Berlaku --> E{"Percobaan Gagal<br/>Sudah 3 Kali atau Lebih?"}
+    E -- Ya --> F["Kembalikan 429 Too Many Requests<br/>Akses dibekukan sementara"]
+    E -- Tidak --> G{"Verifikasi Kode:<br/>Hash OTP Cocok?"}
+    G -- Salah --> H["Tingkatkan Kolom attempts + 1"]
+    H --> I["Kembalikan 400 Bad Request<br/>Pesan sisa percobaan"]
+    G -- Benar --> J["Hapus Record OTP dari Database"]
+    J --> K["Generate API Token Sanctum"]
+    K --> L(["Selesai - Kembalikan 200 OK<br/>Login Sukses dan Bearer Token"])
 ```
 
 **💡 Cara Menjelaskan Alur Ini:**
@@ -441,13 +440,13 @@ Endpoint untuk meminta kode verifikasi pemulihan kata sandi melalui saluran Emai
 
 ```mermaid
 flowchart TD
-    A([Mulai: Request Lupa Password]) --> B[Client pilih Metode 'email'/'whatsapp'<br/>& masukkan Identifier]
-    B --> C{Pengguna Terdaftar di Database?}
-    C -- Tidak Ditemukan --> D[Kembalikan 404 Not Found<br/>Pengguna tidak ditemukan]
-    C -- Ditemukan --> E[Generate 6 Digit Kode OTP]
-    E --> F[Simpan Hash OTP ke Tabel 'otps'<br/>Tipe: forgot_password, Expired: 10 Menit]
-    F --> G[Kirim Kode ke Email / WhatsApp Pengguna]
-    G --> H([Selesai: Kembalikan 200 OK<br/>Instruksi Reset Terkirim])
+    A(["Mulai - Request Lupa Password"]) --> B["Client pilih Metode dan masukkan Identifier"]
+    B --> C{"Pengguna Terdaftar di Database?"}
+    C -- Tidak Ditemukan --> D["Kembalikan 404 Not Found<br/>Pengguna tidak ditemukan"]
+    C -- Ditemukan --> E["Generate 6 Digit Kode OTP"]
+    E --> F["Simpan Hash OTP ke Tabel otps<br/>Tipe: forgot_password, Expired: 10 Menit"]
+    F --> G["Kirim Kode ke Email atau WhatsApp Pengguna"]
+    G --> H(["Selesai - Kembalikan 200 OK<br/>Instruksi Reset Terkirim"])
 ```
 
 **💡 Cara Menjelaskan Alur Ini:**
@@ -463,13 +462,13 @@ Endpoint untuk mengeksekusi penggantian kata sandi lama dengan kata sandi baru s
 
 ```mermaid
 flowchart TD
-    A([Mulai: Reset Password]) --> B[Client kirim Identifier, OTP, & Password Baru]
-    B --> C{Validasi Data OTP:<br/>Ada, Belum Expired, & Kode Cocok?}
-    C -- Tidak Cocok / Expired --> D[Kembalikan 400 Bad Request<br/>Kode verifikasi tidak valid / kadaluarsa]
-    C -- Valid & Cocok --> E[Hash Password Baru dengan Bcrypt]
-    E --> F[Update Kolom password pada Tabel Users]
-    F --> G[Hapus Record OTP dari Database]
-    G --> H([Selesai: Kembalikan 200 OK<br/>Password Berhasil Diperbarui])
+    A(["Mulai - Reset Password"]) --> B["Client kirim Identifier, OTP, dan Password Baru"]
+    B --> C{"Validasi Data OTP:<br/>Ada, Belum Expired, dan Kode Cocok?"}
+    C -- Tidak Cocok atau Expired --> D["Kembalikan 400 Bad Request<br/>Kode verifikasi tidak valid atau kadaluarsa"]
+    C -- Valid dan Cocok --> E["Hash Password Baru dengan Bcrypt"]
+    E --> F["Update Kolom password pada Tabel Users"]
+    F --> G["Hapus Record OTP dari Database"]
+    G --> H(["Selesai - Kembalikan 200 OK<br/>Password Berhasil Diperbarui"])
 ```
 
 **💡 Cara Menjelaskan Alur Ini:**
@@ -485,11 +484,11 @@ Endpoint terproteksi (*protected route*) untuk mengambil data profil lengkap pen
 
 ```mermaid
 flowchart TD
-    A([Mulai: Request Profil]) --> B[Client kirim Request dengan Header:<br/>Authorization: Bearer Token]
-    B --> C{Middleware auth:sanctum:<br/>Apakah Token Valid & Aktif?}
-    C -- Tidak Ada / Tidak Valid --> D[Kembalikan 401 Unauthorized<br/>Unauthenticated]
-    C -- Token Valid --> E[Ambil Data Pengguna Terkait dari Database]
-    E --> F([Selesai: Kembalikan 200 OK<br/>Data Profil Pengguna Lengkap])
+    A(["Mulai - Request Profil"]) --> B["Client kirim Request dengan Header Bearer Token"]
+    B --> C{"Middleware auth:sanctum:<br/>Apakah Token Valid dan Aktif?"}
+    C -- Tidak Ada atau Tidak Valid --> D["Kembalikan 401 Unauthorized<br/>Unauthenticated"]
+    C -- Token Valid --> E["Ambil Data Pengguna Terkait dari Database"]
+    E --> F(["Selesai - Kembalikan 200 OK<br/>Data Profil Pengguna Lengkap"])
 ```
 
 **💡 Cara Menjelaskan Alur Ini:**
