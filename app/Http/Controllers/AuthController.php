@@ -1,9 +1,9 @@
 <?php
 
 // app/Http/Controllers/Api/AuthController.php
+
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\Otp;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -14,32 +14,32 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validated = $request->validate([
-            'name'         => 'required|string|max:255',
-            'email'        => 'nullable|email|unique:users|required_without:phone_number',
+            'name' => 'required|string|max:255',
+            'email' => 'nullable|email|unique:users|required_without:phone_number',
             'phone_number' => 'nullable|string|unique:users|required_without:email',
-            'password'     => 'required|string|min:8|confirmed',
+            'password' => 'required|string|min:8|confirmed',
         ], [
-            'email.required_without'        => 'Alamat email atau nomor WhatsApp harus diisi salah satu.',
+            'email.required_without' => 'Alamat email atau nomor WhatsApp harus diisi salah satu.',
             'phone_number.required_without' => 'Alamat email atau nomor WhatsApp harus diisi salah satu.',
-            'email.unique'                  => 'Email ini sudah terdaftar.',
-            'phone_number.unique'           => 'Nomor WhatsApp ini sudah terdaftar.',
-            'password.confirmed'            => 'Konfirmasi kata sandi tidak cocok.',
+            'email.unique' => 'Email ini sudah terdaftar.',
+            'phone_number.unique' => 'Nomor WhatsApp ini sudah terdaftar.',
+            'password.confirmed' => 'Konfirmasi kata sandi tidak cocok.',
         ]);
 
         $user = User::create([
-            'name'         => $validated['name'],
-            'email'        => $validated['email'] ?? null,
+            'name' => $validated['name'],
+            'email' => $validated['email'] ?? null,
             'phone_number' => $validated['phone_number'] ?? null,
-            'password'     => Hash::make($validated['password']),
+            'password' => Hash::make($validated['password']),
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Pendaftaran berhasil',
-            'data'    => [
-                'user'  => $user,
+            'data' => [
+                'user' => $user,
                 'token' => $user->createToken('auth_token')->plainTextToken,
-            ]
+            ],
         ], 201);
     }
 
@@ -51,22 +51,22 @@ class AuthController extends Controller
         ]);
 
         $fieldType = filter_var($credentials['identity'], FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
-        $user      = User::where($fieldType, $credentials['identity'])->first();
+        $user = User::where($fieldType, $credentials['identity'])->first();
 
-        if (!$user || !Hash::check($credentials['password'], $user->password)) {
+        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Kombinasi email/username atau kata sandi tidak cocok.'
+                'message' => 'Kombinasi email/username atau kata sandi tidak cocok.',
             ], 401);
         }
 
         return response()->json([
             'success' => true,
             'message' => 'Masuk berhasil',
-            'data'    => [
-                'user'  => $user,
+            'data' => [
+                'user' => $user,
                 'token' => $user->createToken('auth_token')->plainTextToken,
-            ]
+            ],
         ]);
     }
 
@@ -75,7 +75,7 @@ class AuthController extends Controller
         $request->validate(['phone_number' => 'required|string']);
 
         $user = User::where('phone_number', $request->phone_number)->first();
-        if (!$user) {
+        if (! $user) {
             return response()->json(['success' => false, 'message' => 'Nomor WhatsApp belum terdaftar.'], 404);
         }
 
@@ -84,8 +84,8 @@ class AuthController extends Controller
         Otp::updateOrCreate(
             ['identifier' => $request->phone_number, 'type' => 'login_whatsapp'],
             [
-                'otp_code'   => Hash::make($otpCode),
-                'attempts'   => 0,
+                'otp_code' => Hash::make($otpCode),
+                'attempts' => 0,
                 'expires_at' => now()->addMinutes(5),
             ]
         );
@@ -99,14 +99,14 @@ class AuthController extends Controller
     {
         $request->validate([
             'phone_number' => 'required|string',
-            'otp_code'     => 'required|string|digits:6',
+            'otp_code' => 'required|string|digits:6',
         ]);
 
         $otp = Otp::where('identifier', $request->phone_number)
             ->where('type', 'login_whatsapp')
             ->first();
 
-        if (!$otp || now()->isAfter($otp->expires_at)) {
+        if (! $otp || now()->isAfter($otp->expires_at)) {
             return response()->json(['success' => false, 'message' => 'Kode OTP salah atau sudah kadaluarsa.'], 400);
         }
 
@@ -114,9 +114,10 @@ class AuthController extends Controller
             return response()->json(['success' => false, 'message' => 'Akses dibekukan sementara karena terlalu banyak percobaan.'], 429);
         }
 
-        if (!Hash::check($request->otp_code, $otp->otp_code)) {
+        if (! Hash::check($request->otp_code, $otp->otp_code)) {
             $otp->increment('attempts');
-            return response()->json(['success' => false, 'message' => 'Kode OTP tidak sesuai. Sisa percobaan: ' . (3 - $otp->attempts)], 400);
+
+            return response()->json(['success' => false, 'message' => 'Kode OTP tidak sesuai. Sisa percobaan: '.(3 - $otp->attempts)], 400);
         }
 
         $otp->delete();
@@ -125,22 +126,22 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Verifikasi berhasil',
-            'data'    => [
-                'user'  => $user,
+            'data' => [
+                'user' => $user,
                 'token' => $user->createToken('auth_token')->plainTextToken,
-            ]
+            ],
         ]);
     }
 
     public function requestForgotPassword(Request $request)
     {
         $request->validate([
-            'method'     => 'required|in:email,whatsapp',
+            'method' => 'required|in:email,whatsapp',
             'identifier' => 'required|string',
         ]);
 
         $field = $request->method === 'email' ? 'email' : 'phone_number';
-        if (!User::where($field, $request->identifier)->exists()) {
+        if (! User::where($field, $request->identifier)->exists()) {
             return response()->json(['success' => false, 'message' => 'Pengguna tidak ditemukan.'], 404);
         }
 
@@ -149,8 +150,8 @@ class AuthController extends Controller
         Otp::updateOrCreate(
             ['identifier' => $request->identifier, 'type' => 'forgot_password'],
             [
-                'otp_code'   => Hash::make($otpCode),
-                'attempts'   => 0,
+                'otp_code' => Hash::make($otpCode),
+                'attempts' => 0,
                 'expires_at' => now()->addMinutes(10),
             ]
         );
@@ -162,21 +163,21 @@ class AuthController extends Controller
     {
         $request->validate([
             'identifier' => 'required|string',
-            'otp_code'   => 'required|string|digits:6',
-            'password'   => 'required|string|min:8|confirmed',
+            'otp_code' => 'required|string|digits:6',
+            'password' => 'required|string|min:8|confirmed',
         ]);
 
         $otp = Otp::where('identifier', $request->identifier)
             ->where('type', 'forgot_password')
             ->first();
 
-        if (!$otp || now()->isAfter($otp->expires_at) || !Hash::check($request->otp_code, $otp->otp_code)) {
+        if (! $otp || now()->isAfter($otp->expires_at) || ! Hash::check($request->otp_code, $otp->otp_code)) {
             return response()->json(['success' => false, 'message' => 'Kode verifikasi tidak valid atau kadaluarsa.'], 400);
         }
 
         $field = filter_var($request->identifier, FILTER_VALIDATE_EMAIL) ? 'email' : 'phone_number';
         User::where($field, $request->identifier)->update([
-            'password' => Hash::make($request->password)
+            'password' => Hash::make($request->password),
         ]);
 
         $otp->delete();

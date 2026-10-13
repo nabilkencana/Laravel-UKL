@@ -13,6 +13,14 @@ Aplikasi backend API berbasis **Laravel 12** dan **PHP 8.4** yang menyediakan si
 - [Diagram Alur Sistem (Sequence Diagram)](#-diagram-alur-sistem-sequence-diagram)
   - [1. Alur Registrasi & Login (Email/Username)](#1-alur-registrasi--login-emailusername)
   - [2. Alur Autentikasi OTP WhatsApp](#2-alur-autentikasi-otp-whatsapp)
+- [Flowchart Logika Setiap Endpoint (Mermaid)](#-flowchart-logika-setiap-endpoint-mermaid)
+  - [1. POST /api/auth/register (Registrasi Akun)](#1-post-apiauthregister-registrasi-akun)
+  - [2. POST /api/auth/login-email (Login Email / Username)](#2-post-apiauthlogin-email-login-email--username)
+  - [3. POST /api/auth/request-otp-wa (Permintaan OTP WhatsApp)](#3-post-apiauthrequest-otp-wa-permintaan-otp-whatsapp)
+  - [4. POST /api/auth/verify-otp-wa (Verifikasi OTP WhatsApp)](#4-post-apiauthverify-otp-wa-verifikasi-otp-whatsapp)
+  - [5. POST /api/auth/forgot-password/request (Permintaan Lupa Password)](#5-post-apiauthforgot-passwordrequest-permintaan-lupa-password)
+  - [6. POST /api/auth/forgot-password/reset (Reset Password Baru)](#6-post-apiauthforgot-passwordreset-reset-password-baru)
+  - [7. GET /api/user (Profil Pengguna Terautentikasi)](#7-get-apiuser-profil-pengguna-terautentikasi)
 - [Dokumentasi API Endpoint](#-dokumentasi-api-endpoint)
 - [Koleksi Postman (Postman Collection)](#-koleksi-postman-postman-collection)
 - [Panduan Instalasi & Menjalankan Proyek](#-panduan-instalasi--menjalankan-proyek)
@@ -309,6 +317,185 @@ sequenceDiagram
         App-->>Client: 200 OK {success: true, token: "Bearer eyJhb..."}
     end
 ```
+
+---
+
+## 🔀 Flowchart Logika Setiap Endpoint (Mermaid)
+
+Bagian ini menyajikan diagram alir logika (*flowchart*) sederhana untuk setiap endpoint API beserta poin-poin penjelasan singkat agar mudah dipahami dan dipresentasikan saat uji kompetensi (UKL).
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                 RINGKASAN LOGIKA 7 ENDPOINT API                        │
+├────────────────────────────────────────────────────────────────────────┤
+│ 1. POST /api/auth/register               -> Validasi -> Hash -> Token  │
+│ 2. POST /api/auth/login-email            -> Deteksi  -> Cek  -> Token  │
+│ 3. POST /api/auth/request-otp-wa         -> Cek No   -> Buat -> Kirim  │
+│ 4. POST /api/auth/verify-otp-wa          -> Batas 3x -> Cek  -> Token  │
+│ 5. POST /api/auth/forgot-password/request-> Cek User -> Buat -> Kirim  │
+│ 6. POST /api/auth/forgot-password/reset  -> Cek OTP  -> Hash -> Update │
+│ 7. GET  /api/user                        -> Sanctum  -> Ambil Profile  │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 1. POST `/api/auth/register` (Registrasi Akun)
+Endpoint untuk mendaftarkan akun pengguna baru menggunakan nama, password, serta fleksibilitas kontak (Email atau Nomor WhatsApp).
+
+```mermaid
+flowchart TD
+    A([Mulai: Request Register]) --> B[Client kirim Nama, Email/No WA, Password]
+    B --> C{Validasi Input:<br/>Format & Keunikan Data?}
+    C -- Gagal --> D[Kembalikan 422 Unprocessable Content<br/>Pesan error validasi]
+    C -- Berhasil --> E[Hash Password dengan Bcrypt]
+    E --> F[Simpan Data User Baru ke Database]
+    F --> G[Generate API Token Sanctum]
+    G --> H([Selesai: Kembalikan 201 Created<br/>Data User & Bearer Token])
+```
+
+**💡 Cara Menjelaskan Alur Ini:**
+1. **Input Data**: Klien mengirim nama, password, serta salah satu kontak wajib (Email atau No WhatsApp).
+2. **Validasi**: Sistem memastikan format data valid dan email/nomor WA belum pernah didaftarkan sebelumnya. Jika duplikat/salah format, kembalikan HTTP `422`.
+3. **Enkripsi & Simpan**: Password di-hash menggunakan algoritma Bcrypt demi keamanan data, lalu disimpan ke tabel `users`.
+4. **Generate Token**: Sistem langsung menerbitkan personal access token (Sanctum) agar pengguna otomatis login dengan status HTTP `201 Created`.
+
+---
+
+### 2. POST `/api/auth/login-email` (Login Email / Username)
+Endpoint masuk sistem secara dinamis yang otomatis mendeteksi apakah pengguna mengetikkan Email atau Username pada kolom identitas.
+
+```mermaid
+flowchart TD
+    A([Mulai: Request Login]) --> B[Client kirim Identity & Password]
+    B --> C{Validasi Input:<br/>Identity & Password terisi?}
+    C -- Gagal --> D[Kembalikan 422 Unprocessable Content]
+    C -- Berhasil --> E{Deteksi Tipe Identity:<br/>Format Email atau Username?}
+    E -- Format Email --> F1[Cari User WHERE email = identity]
+    E -- Format Username --> F2[Cari User WHERE username = identity]
+    F1 --> G{User Ada &<br/>Hash::check Password Cocok?}
+    F2 --> G
+    G -- Tidak Cocok / User Null --> H[Kembalikan 401 Unauthorized<br/>Kombinasi salah]
+    G -- Cocok --> I[Buat Personal Access Token Sanctum]
+    I --> J([Selesai: Kembalikan 200 OK<br/>Data User & Bearer Token])
+```
+
+**💡 Cara Menjelaskan Alur Ini:**
+1. **Input Fleksibel**: Pengguna hanya perlu memasukkan kolom `identity` (bisa diisi alamat email atau username) beserta `password`.
+2. **Deteksi Otomatis**: Backend secara pintar mengenali apakah input berisi format email (`FILTER_VALIDATE_EMAIL`). Jika bukan email, dicari sebagai username.
+3. **Pencocokan Sandi**: Sistem memeriksa apakah akun ditemukan dan kata sandi cocok via `Hash::check`. Jika salah, kembalikan HTTP `401 Unauthorized`.
+4. **Token Login**: Jika data benar, token Sanctum baru dibuatkan dan dikirimkan ke pengguna dengan status HTTP `200 OK`.
+
+---
+
+### 3. POST `/api/auth/request-otp-wa` (Permintaan OTP WhatsApp)
+Endpoint untuk membuat dan mengirimkan 6 digit One-Time Password ke nomor WhatsApp terdaftar.
+
+```mermaid
+flowchart TD
+    A([Mulai: Request OTP]) --> B[Client kirim Nomor WhatsApp]
+    B --> C{Cek Nomor Terdaftar<br/>di Database Users?}
+    C -- Tidak Terdaftar --> D[Kembalikan 404 Not Found<br/>Nomor belum terdaftar]
+    C -- Terdaftar --> E[Generate 6 Digit Angka Acak OTP]
+    E --> F[Simpan Hash OTP ke Tabel 'otps'<br/>Set Expired: 5 Menit, Attempts: 0]
+    F --> G[Kirim Kode via WhatsApp Gateway]
+    G --> H([Selesai: Kembalikan 200 OK<br/>OTP Berhasil Dikirimkan])
+```
+
+**💡 Cara Menjelaskan Alur Ini:**
+1. **Pengecekan Nomor**: Sistem memastikan nomor WhatsApp sudah terdaftar di database. Jika belum, kembalikan HTTP `404 Not Found`.
+2. **Pembuatan Kode**: Sistem meng-generate 6 digit angka acak (misal: `748291`).
+3. **Keamanan OTP**: Kode disimpan di tabel `otps` dalam bentuk hash (bukan teks mentah), diset kedaluwarsa dalam 5 menit, dan counter kesalahan disetel ke 0.
+4. **Pengiriman**: Kode dikirim ke WhatsApp pengguna melalui integrasi gateway, lalu respon HTTP `200 OK` dikembalikan.
+
+---
+
+### 4. POST `/api/auth/verify-otp-wa` (Verifikasi OTP WhatsApp)
+Endpoint verifikasi kode OTP WhatsApp untuk login tanpa password (*passwordless login*) dengan perlindungan *brute-force*.
+
+```mermaid
+flowchart TD
+    A([Mulai: Verifikasi OTP]) --> B[Client kirim No WhatsApp & 6 Digit OTP]
+    B --> C{Cek Data OTP Aktif di Database?}
+    C -- Tidak Ada / Expired --> D[Kembalikan 400 Bad Request<br/>OTP salah atau kadaluarsa]
+    C -- Masih Berlaku --> E{Percobaan Gagal<br/>Sudah >= 3 Kali?}
+    E -- Ya --> F[Kembalikan 429 Too Many Requests<br/>Akses dibekukan sementara]
+    E -- Tidak --> G{Verifikasi Kode:<br/>Hash::check OTP Cocok?}
+    G -- Salah --> H[Tingkatkan Kolom attempts + 1]
+    H --> I[Kembalikan 400 Bad Request<br/>Pesan sisa percobaan]
+    G -- Benar --> J[Hapus Record OTP dari Database]
+    J --> K[Generate API Token Sanctum]
+    K --> L([Selesai: Kembalikan 200 OK<br/>Login Sukses & Bearer Token])
+```
+
+**💡 Cara Menjelaskan Alur Ini:**
+1. **Pengecekan Masa Berlaku**: Sistem memeriksa apakah ada OTP aktif untuk nomor tersebut dan apakah masih dalam rentang 5 menit. Jika lewat, tolak dengan HTTP `400 Bad Request`.
+2. **Proteksi Brute-Force**: Jika salah input sudah mencapai 3 kali atau lebih, akun dibekukan sementara dengan HTTP `429 Too Many Requests`.
+3. **Verifikasi Hash**: Jika kode salah, sistem menambah nilai `attempts` dan memberitahukan sisa kesempatan.
+4. **Pembersihan & Token**: Jika kode benar, data OTP langsung dihapus (mencegah *replay attack*) dan token Sanctum diterbitkan (`200 OK`).
+
+---
+
+### 5. POST `/api/auth/forgot-password/request` (Permintaan Lupa Password)
+Endpoint untuk meminta kode verifikasi pemulihan kata sandi melalui saluran Email ataupun WhatsApp.
+
+```mermaid
+flowchart TD
+    A([Mulai: Request Lupa Password]) --> B[Client pilih Metode 'email'/'whatsapp'<br/>& masukkan Identifier]
+    B --> C{Pengguna Terdaftar di Database?}
+    C -- Tidak Ditemukan --> D[Kembalikan 404 Not Found<br/>Pengguna tidak ditemukan]
+    C -- Ditemukan --> E[Generate 6 Digit Kode OTP]
+    E --> F[Simpan Hash OTP ke Tabel 'otps'<br/>Tipe: forgot_password, Expired: 10 Menit]
+    F --> G[Kirim Kode ke Email / WhatsApp Pengguna]
+    G --> H([Selesai: Kembalikan 200 OK<br/>Instruksi Reset Terkirim])
+```
+
+**💡 Cara Menjelaskan Alur Ini:**
+1. **Pilihan Saluran**: Pengguna memilih saluran pengiriman (`email` atau `whatsapp`) dan memasukkan identitas tujuannya.
+2. **Pengecekan User**: Backend memastikan bahwa data pengguna memang ada di database. Jika tidak ada, kembalikan HTTP `404 Not Found`.
+3. **Simpan OTP Reset**: Sistem membuat kode 6 digit OTP acak, menyimpannya dalam tabel `otps` dengan tipe `forgot_password` dan masa berlaku 10 menit.
+4. **Kirim Instruksi**: Kode instruksi dikirim ke kontak yang dipilih dan mengembalikan respon HTTP `200 OK`.
+
+---
+
+### 6. POST `/api/auth/forgot-password/reset` (Reset Password Baru)
+Endpoint untuk mengeksekusi penggantian kata sandi lama dengan kata sandi baru setelah OTP tervalidasi.
+
+```mermaid
+flowchart TD
+    A([Mulai: Reset Password]) --> B[Client kirim Identifier, OTP, & Password Baru]
+    B --> C{Validasi Data OTP:<br/>Ada, Belum Expired, & Kode Cocok?}
+    C -- Tidak Cocok / Expired --> D[Kembalikan 400 Bad Request<br/>Kode verifikasi tidak valid / kadaluarsa]
+    C -- Valid & Cocok --> E[Hash Password Baru dengan Bcrypt]
+    E --> F[Update Kolom password pada Tabel Users]
+    F --> G[Hapus Record OTP dari Database]
+    G --> H([Selesai: Kembalikan 200 OK<br/>Password Berhasil Diperbarui])
+```
+
+**💡 Cara Menjelaskan Alur Ini:**
+1. **Input Data Baru**: Klien mengirimkan identitas akun, kode OTP yang diterima, serta password baru beserta konfirmasinya.
+2. **Validasi OTP**: Sistem mengecek apakah OTP cocok dan belum melewati batas waktu 10 menit. Jika tidak valid, kembalikan HTTP `400 Bad Request`.
+3. **Update Password**: Password baru di-hash dan disimpan menggantikan password lama pada tabel `users`.
+4. **Hapus OTP**: Record OTP segera dihapus agar tidak bisa dipakai kembali, lalu respon sukses HTTP `200 OK` dikembalikan.
+
+---
+
+### 7. GET `/api/user` (Profil Pengguna Terautentikasi)
+Endpoint terproteksi (*protected route*) untuk mengambil data profil lengkap pengguna yang sedang aktif/login.
+
+```mermaid
+flowchart TD
+    A([Mulai: Request Profil]) --> B[Client kirim Request dengan Header:<br/>Authorization: Bearer Token]
+    B --> C{Middleware auth:sanctum:<br/>Apakah Token Valid & Aktif?}
+    C -- Tidak Ada / Tidak Valid --> D[Kembalikan 401 Unauthorized<br/>Unauthenticated]
+    C -- Token Valid --> E[Ambil Data Pengguna Terkait dari Database]
+    E --> F([Selesai: Kembalikan 200 OK<br/>Data Profil Pengguna Lengkap])
+```
+
+**💡 Cara Menjelaskan Alur Ini:**
+1. **Header Autentikasi**: Klien wajib menyertakan token API pada header request: `Authorization: Bearer <token>`.
+2. **Middleware Sanctum**: Laravel Sanctum memeriksa validitas token pada tabel `personal_access_tokens`. Jika token tidak ada atau kadaluarsa, kembalikan HTTP `401 Unauthorized`.
+3. **Respon Profil**: Jika token valid, sistem mengambil record user yang berelasi dan mengembalikannya dalam format JSON dengan status HTTP `200 OK`.
 
 ---
 
